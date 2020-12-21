@@ -1,11 +1,32 @@
+GOCMD=go
+GOBUILD=$(GOCMD) build
+GOTEST=$(GOCMD) test
+GOGET=$(GOCMD) get
+BINARY_NAME=bin/main
+LINTER=golangci-lint
+
+.PHONY: all
+all: test build
+
 .PHONY: build
 build:
-	go build -o bin/main main.go
+	$(GOBUILD) -o $(BINARY_NAME) -v
+
+.PHONY: test
+test:
+	$(GOTEST) ./... -v
+
+.PHONY: install
+install:
+	$(GOGET) ./...
+
+.PHONY: test
+	$(GOTEST) ./... -v
 
 .PHONY: run
 run:
-	go run main.go
+	$(GOCMD) run main.go
 
 .PHONY: lint
 lint:
-	golangci-lint run
+	$(LINTER) run
