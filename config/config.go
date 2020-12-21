@@ -14,7 +14,7 @@ const (
 // AppPort returns application HTTP port.
 func AppPort() string {
 	if p := os.Getenv("PORT"); p != "" {
-		return p
+		return fmt.Sprintf(":%s", p)
 	}
 
 	return port
@@ -32,7 +32,7 @@ func DB() string {
 // ConnectionString returns connection string to mongodb.
 func ConnectionString() string {
 	if dbCS := os.Getenv("CONNECTION_STRING"); dbCS != "" {
-		return fmt.Sprintf(":%s", dbCS)
+		return dbCS
 	}
 
 	return connectionString
