@@ -5,7 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func getIDFilter(id string) (bson.M, error) {
+func idFilter(id string) (bson.M, error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return bson.M{}, err

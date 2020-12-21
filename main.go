@@ -2,19 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
-
 	"github.com/roflanKisel/cart-go/repository"
+	"github.com/roflanKisel/cart-go/router"
 	"github.com/roflanKisel/cart-go/service"
+
+	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/roflanKisel/cart-go/router"
 )
 
 const (
@@ -26,33 +24,38 @@ const (
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connectionString))
-	defer client.Disconnect(context.TODO())
-	defer fmt.Println("Disconnected")
 
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connectionString))
 	if err != nil {
 		log.Fatal("Error connecting database", err)
 	}
 
+	defer func() {
+		err := client.Disconnect(ctx)
+		if err != nil {
+			log.Fatal("Error disconnecting database client")
+		}
+	}()
+
 	database := client.Database(databaseName)
-	err = client.Ping(context.TODO(), nil)
+	err = client.Ping(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	r := mux.NewRouter()
 
-	cartRepository := &repository.MongoCartRepository{Db: database}
-	cartItemRepository := &repository.MongoCartItemRepository{Db: database}
+	cartRepository := repository.NewMongoCartRepository(database)
+	cartItemRepository := repository.NewMongoCartItemRepository(database)
 
-	cartService := &service.CartService{R: cartRepository, Cir: cartItemRepository}
-	cartItemService := &service.CartItemService{R: cartItemRepository}
+	cartService := service.NewCartService(cartRepository, cartItemRepository)
+	cartItemService := service.NewCartItemService(cartItemRepository)
 
-	cr := &router.CartRouter{Cs: cartService}
-	cir := &router.CartItemRouter{Cis: cartItemService, Cs: cartService}
+	cartRouter := router.NewCartRouter(cartService)
+	cartItemRouter := router.NewCartItemRouter(cartService, cartItemService)
 
-	cr.RegisterCartHandlers(r)
-	cir.RegisterCartItemHandlers(r)
+	cartRouter.RegisterCartHandlers(r)
+	cartItemRouter.RegisterCartItemHandlers(r)
 
-	http.ListenAndServe(port, r)
+	log.Fatal(http.ListenAndServe(port, r))
 }

@@ -4,39 +4,40 @@ import (
 	"context"
 
 	"github.com/roflanKisel/cart-go/model"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// CartItemRepository interface
-type CartItemRepository interface {
-	Create(c *model.CartItem) (*model.CartItem, error)
-	FindAll() ([]*model.CartItem, error)
-	FindByID(id string) (*model.CartItem, error)
-	UpdateByID(id string, c *model.CartItem) error
-	DeleteByID(id string) error
-	FindByCartID(id string) ([]model.CartItem, error)
+// CartItemKeeper is the interface that wraps basic CRUD operation over the CartItem.
+type CartItemKeeper interface {
+	Create(ctx context.Context, c *model.CartItem) (*model.CartItem, error)
+	All(ctx context.Context) ([]*model.CartItem, error)
+	ByID(ctx context.Context, id string) (*model.CartItem, error)
+	UpdateByID(ctx context.Context, id string, c *model.CartItem) error
+	DeleteByID(ctx context.Context, id string) error
+	ByCartID(ctx context.Context, id string) ([]model.CartItem, error)
 }
 
-// MongoCartItemRepository provides methods for managing
-// cart items using mongo database
+// NewMongoCartItemRepository returns mongo repository for CartItem which uses passed database.
+func NewMongoCartItemRepository(db *mongo.Database) *MongoCartItemRepository {
+	return &MongoCartItemRepository{collection: db.Collection("cart_items")}
+}
+
+// MongoCartItemRepository is the implementation of CartItemKeeper interface based on MondoDB.
 type MongoCartItemRepository struct {
-	Db *mongo.Database
+	collection *mongo.Collection
 }
 
-const cartItemCollectionName = "cart_items"
-
-// Create will insert cart item into database
-func (m *MongoCartItemRepository) Create(c *model.CartItem) (*model.CartItem, error) {
-	collection := m.Db.Collection(cartItemCollectionName)
-
-	mc, err := c.GetMongoObject()
+// Create inserts a CartItem object into database.
+func (m MongoCartItemRepository) Create(ctx context.Context, c *model.CartItem) (*model.CartItem, error) {
+	mc, err := c.MongoObject()
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := collection.InsertOne(context.TODO(), mc)
+	res, err := m.collection.InsertOne(ctx, mc)
 	if err != nil {
 		return nil, err
 	}
@@ -45,52 +46,52 @@ func (m *MongoCartItemRepository) Create(c *model.CartItem) (*model.CartItem, er
 	return c, nil
 }
 
-// FindAll will return all the cart items from database
-func (m *MongoCartItemRepository) FindAll() ([]*model.CartItem, error) {
-	collection := m.Db.Collection(cartItemCollectionName)
+// All returns an array of CartItem objects from database.
+func (m MongoCartItemRepository) All(ctx context.Context) ([]*model.CartItem, error) {
 	var cartItems []*model.CartItem
 
-	cur, err := collection.Find(context.TODO(), bson.D{})
+	cur, err := m.collection.Find(ctx, bson.D{})
 	if err != nil {
 		return nil, err
 	}
 
-	for cur.Next(context.TODO()) {
+	for cur.Next(ctx) {
 		var elem model.MongoCartItem
-		err := cur.Decode(&elem)
-		if err != nil {
+		if err = cur.Decode(&elem); err != nil {
 			return nil, err
 		}
 
-		cartItems = append(cartItems, elem.GetDefaultObject(nil))
+		cartItems = append(cartItems, elem.DefaultObject(nil))
+	}
+
+	err = cur.Close(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return cartItems, nil
 }
 
-// FindByID will return cart item from database that matches provided id
-func (m *MongoCartItemRepository) FindByID(id string) (*model.CartItem, error) {
-	collection := m.Db.Collection(cartItemCollectionName)
+// ByID returns a CartItem object from database that matches passed id.
+func (m MongoCartItemRepository) ByID(ctx context.Context, id string) (*model.CartItem, error) {
 	var cartItem model.MongoCartItem
 
-	idFilter, err := getIDFilter(id)
+	idFilter, err := idFilter(id)
 	if err != nil {
 		return nil, err
 	}
 
-	err = collection.FindOne(context.TODO(), idFilter).Decode(&cartItem)
+	err = m.collection.FindOne(ctx, idFilter).Decode(&cartItem)
 	if err != nil {
 		return nil, err
 	}
 
-	return cartItem.GetDefaultObject(nil), nil
+	return cartItem.DefaultObject(nil), nil
 }
 
-// UpdateByID will update cart item in database that matches provided id
-func (m *MongoCartItemRepository) UpdateByID(id string, c *model.CartItem) error {
-	collection := m.Db.Collection(cartItemCollectionName)
-
-	idFilter, err := getIDFilter(id)
+// UpdateByID updates a CartItem object in database that matches passed id.
+func (m MongoCartItemRepository) UpdateByID(ctx context.Context, id string, c *model.CartItem) error {
+	idFilter, err := idFilter(id)
 	if err != nil {
 		return err
 	}
@@ -103,7 +104,7 @@ func (m *MongoCartItemRepository) UpdateByID(id string, c *model.CartItem) error
 		},
 	}
 
-	_, err = collection.UpdateOne(context.TODO(), idFilter, update)
+	_, err = m.collection.UpdateOne(ctx, idFilter, update)
 	if err != nil {
 		return err
 	}
@@ -111,15 +112,14 @@ func (m *MongoCartItemRepository) UpdateByID(id string, c *model.CartItem) error
 	return nil
 }
 
-// DeleteByID will delete cart item from database that matches provided id
-func (m *MongoCartItemRepository) DeleteByID(id string) error {
-	collection := m.Db.Collection(cartItemCollectionName)
-	idFilter, err := getIDFilter(id)
+// DeleteByID deletes CartItem object from database that matches passed id.
+func (m MongoCartItemRepository) DeleteByID(ctx context.Context, id string) error {
+	idFilter, err := idFilter(id)
 	if err != nil {
 		return err
 	}
 
-	_, err = collection.DeleteOne(context.TODO(), idFilter)
+	_, err = m.collection.DeleteOne(ctx, idFilter)
 	if err != nil {
 		return err
 	}
@@ -127,9 +127,8 @@ func (m *MongoCartItemRepository) DeleteByID(id string) error {
 	return nil
 }
 
-// FindByCartID will return cart items matching given ID
-func (m *MongoCartItemRepository) FindByCartID(id string) ([]model.CartItem, error) {
-	collection := m.Db.Collection(cartItemCollectionName)
+// ByCartID returns an array of CartItem objects from database that match passed id and cart_id property.
+func (m *MongoCartItemRepository) ByCartID(ctx context.Context, id string) ([]model.CartItem, error) {
 	var cartItems []model.CartItem
 
 	cartObjectID, err := primitive.ObjectIDFromHex(id)
@@ -139,19 +138,23 @@ func (m *MongoCartItemRepository) FindByCartID(id string) ([]model.CartItem, err
 
 	query := bson.M{"cart_id": cartObjectID}
 
-	cur, err := collection.Find(context.TODO(), query)
+	cur, err := m.collection.Find(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
-	for cur.Next(context.TODO()) {
+	for cur.Next(ctx) {
 		var elem model.MongoCartItem
-		err := cur.Decode(&elem)
-		if err != nil {
+		if err = cur.Decode(&elem); err != nil {
 			return nil, err
 		}
 
-		cartItems = append(cartItems, *elem.GetDefaultObject(nil))
+		cartItems = append(cartItems, *elem.DefaultObject(nil))
+	}
+
+	err = cur.Close(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return cartItems, nil

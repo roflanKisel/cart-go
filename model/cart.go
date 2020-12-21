@@ -1,21 +1,23 @@
 package model
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
-// Cart model
+// Cart represents cart as a common model.
 type Cart struct {
 	ID    string     `json:"_id"   bson:"_id,omitempty"`
 	Items []CartItem `json:"items" bson:"items"`
 }
 
-// MongoCart is a mongo version of Cart model
+// MongoCart represents cart as a mongo doc based on common model.
 type MongoCart struct {
 	ID    primitive.ObjectID `json:"_id"   bson:"_id,omitempty"`
 	Items []CartItem         `json:"items" bson:"items"`
 }
 
-// GetMongoObject converts default Cart to MongoCart
-func (c *Cart) GetMongoObject() (*MongoCart, error) {
+// MongoObject converts common Cart object to mongo version.
+func (c Cart) MongoObject() (*MongoCart, error) {
 	var id primitive.ObjectID
 
 	if c.ID != "" {
@@ -33,8 +35,8 @@ func (c *Cart) GetMongoObject() (*MongoCart, error) {
 	}, nil
 }
 
-// GetDefaultObject converts MongoCartItem to Cart
-func (mc *MongoCart) GetDefaultObject(c *Cart) *Cart {
+// DefaultObject converts mongo Cart object to common version.
+func (mc MongoCart) DefaultObject(c *Cart) *Cart {
 	if c == nil {
 		return &Cart{
 			ID:    mc.ID.Hex(),

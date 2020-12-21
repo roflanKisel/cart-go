@@ -1,8 +1,10 @@
 package model
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
-// CartItem model
+// CartItem represents item in cart as a common model.
 type CartItem struct {
 	ID       string `json:"_id"      bson:"_id,omitempty"`
 	CartID   string `json:"cart_id"  bson:"cart_id,omitempty"`
@@ -10,7 +12,7 @@ type CartItem struct {
 	Quantity int    `json:"quantity" bson:"quantity"`
 }
 
-// MongoCartItem is a mongo version of CartItem model
+// MongoCartItem represents item in cart as a mongo doc based on common model.
 type MongoCartItem struct {
 	ID       primitive.ObjectID `json:"_id"      bson:"_id,omitempty"`
 	CartID   primitive.ObjectID `json:"cart_id"  bson:"cart_id,omitempty"`
@@ -18,8 +20,8 @@ type MongoCartItem struct {
 	Quantity int                `json:"quantity" bson:"quantity"`
 }
 
-// GetMongoObject converts default CartItem to mongo version
-func (ci *CartItem) GetMongoObject() (*MongoCartItem, error) {
+// MongoObject converts common CartItem object to mongo version.
+func (ci CartItem) MongoObject() (*MongoCartItem, error) {
 	var ciID primitive.ObjectID
 	if ci.ID != "" {
 		id, err := primitive.ObjectIDFromHex(ci.ID)
@@ -48,8 +50,8 @@ func (ci *CartItem) GetMongoObject() (*MongoCartItem, error) {
 	}, nil
 }
 
-// GetDefaultObject converts MongoCartItem to default CartItem struct
-func (mci *MongoCartItem) GetDefaultObject(ci *CartItem) *CartItem {
+// DefaultObject converts mongo CartItem object to common version.
+func (mci MongoCartItem) DefaultObject(ci *CartItem) *CartItem {
 	if ci == nil {
 		return &CartItem{
 			ID:       mci.ID.Hex(),

@@ -1,24 +1,32 @@
 package service
 
 import (
+	"context"
+
 	"github.com/roflanKisel/cart-go/model"
 	"github.com/roflanKisel/cart-go/repository"
 )
 
-// CartItemService handles CartItem operations
-type CartItemService struct {
-	R repository.CartItemRepository
+// NewCartItemService returns a service for CartItem manipulations over the passed CartItemKeeper.
+func NewCartItemService(cik repository.CartItemKeeper) *CartItemService {
+	return &CartItemService{cik: cik}
 }
 
-// ErrNotMatchCartID will be fired when cart item ID does not match correct CartID
+// CartItemService handles CartItem operations over the CartItemKeeper.
+type CartItemService struct {
+	cik repository.CartItemKeeper
+}
+
+// ErrNotMatchCartID fires when cart item ID does not match correct CartID.
 type ErrNotMatchCartID struct{}
 
-func (e *ErrNotMatchCartID) Error() string {
+// Error returns ErrNotMatchCartID error description.
+func (e ErrNotMatchCartID) Error() string {
 	return "Item does not match Cart ID"
 }
 
-// CreateCartItem will create Cart
-func (cis *CartItemService) CreateCartItem(cartID string, product string, quantity int) (*model.CartItem, error) {
+// CreateCartItem creates a CartItem in CartItemKeeper based on passed properties.
+func (cis CartItemService) CreateCartItem(ctx context.Context, cartID string, product string, quantity int) (*model.CartItem, error) {
 	// TODO: Put validator here
 
 	cartItem := &model.CartItem{
@@ -27,7 +35,7 @@ func (cis *CartItemService) CreateCartItem(cartID string, product string, quanti
 		Quantity: quantity,
 	}
 
-	ci, err := cis.R.Create(cartItem)
+	ci, err := cis.cik.Create(ctx, cartItem)
 	if err != nil {
 		return nil, err
 	}
@@ -35,9 +43,9 @@ func (cis *CartItemService) CreateCartItem(cartID string, product string, quanti
 	return ci, nil
 }
 
-// RemoveCartItem will remove cart with given ID
-func (cis *CartItemService) RemoveCartItem(cartID string, id string) error {
-	ci, err := cis.R.FindByID(id)
+// RemoveCartItem removes a CartItem from CartItemKeeper that matches passed properties.
+func (cis CartItemService) RemoveCartItem(ctx context.Context, cartID string, id string) error {
+	ci, err := cis.cik.ByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -46,7 +54,7 @@ func (cis *CartItemService) RemoveCartItem(cartID string, id string) error {
 		return &ErrNotMatchCartID{}
 	}
 
-	err = cis.R.DeleteByID(id)
+	err = cis.cik.DeleteByID(ctx, id)
 	if err != nil {
 		return err
 	}
