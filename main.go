@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -40,7 +41,7 @@ func main() {
 	database := client.Database(databaseName)
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Sprintf("Connection to database failed: %s", err.Error()))
 	}
 
 	r := mux.NewRouter()
