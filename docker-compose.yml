@@ -1,0 +1,25 @@
+version: '3.7'
+
+services:
+  service:
+    build: .
+    ports:
+      - 8080:8080
+    links:
+      - db
+    depends_on:
+      - db
+    environment:
+      CONNECTION_STRING: 'mongodb://db:27017'
+      DB: 'cart_go'
+      PORT: '8080'
+
+  db:
+    image: mongo:4.2.5
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data_container:/app/db
+
+volumes:
+  mongodb_data_container:

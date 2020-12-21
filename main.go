@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/roflanKisel/cart-go/config"
 	"github.com/roflanKisel/cart-go/repository"
 	"github.com/roflanKisel/cart-go/router"
 	"github.com/roflanKisel/cart-go/service"
@@ -16,17 +17,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const (
-	connectionString = "mongodb://localhost:27017"
-	databaseName     = "cart_go"
-	port             = ":3000"
-)
-
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connectionString))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.ConnectionString()))
 	if err != nil {
 		log.Fatal("Error connecting database", err)
 	}
@@ -38,7 +33,7 @@ func main() {
 		}
 	}()
 
-	database := client.Database(databaseName)
+	database := client.Database(config.DB())
 	err = client.Ping(ctx, nil)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Connection to database failed: %s", err.Error()))
@@ -58,5 +53,5 @@ func main() {
 	cartRouter.RegisterCartHandlers(r)
 	cartItemRouter.RegisterCartItemHandlers(r)
 
-	log.Fatal(http.ListenAndServe(port, r))
+	log.Fatal(http.ListenAndServe(config.AppPort(), r))
 }
