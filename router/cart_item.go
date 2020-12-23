@@ -9,6 +9,7 @@ import (
 	"github.com/roflanKisel/cart-go/service"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // NewCartItemRouter returns router for CartItem which uses passed services.
@@ -57,6 +58,11 @@ func (cir CartItemRouter) createCartItem(w http.ResponseWriter, r *http.Request)
 
 	_, err := cir.cSvc.CartByID(ctx, cartID)
 	if err != nil {
+		if err == mongo.ErrNilDocument {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		_, err = w.Write([]byte(fmt.Sprintf("An error ocurred when getting cart by ID: %s", err.Error())))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -108,6 +114,11 @@ func (cir CartItemRouter) deleteCartItem(w http.ResponseWriter, r *http.Request)
 
 	err := cir.ciSvc.RemoveCartItem(ctx, cartID, id)
 	if err != nil {
+		if err == mongo.ErrNilDocument || err == service.ErrNotMatchCartID {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		_, err = w.Write([]byte(fmt.Sprintf("An error ocurred when removing cart item: %s", err.Error())))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

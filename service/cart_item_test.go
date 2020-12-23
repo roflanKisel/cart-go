@@ -42,7 +42,7 @@ func (f FakeCartItemKeeper) All(ctx context.Context) ([]*model.CartItem, error) 
 
 func (f FakeCartItemKeeper) ByID(ctx context.Context, id string) (*model.CartItem, error) {
 	if f.WithError {
-		return nil, &service.ErrNotMatchCartID{}
+		return nil, service.ErrNotMatchCartID
 	}
 
 	return &model.CartItem{ID: "**mongoID**", CartID: "**mongoCartID**"}, nil
@@ -105,7 +105,7 @@ func TestRemoveCartItem(t *testing.T) {
 		expected error
 	}{
 		{"Without errors", FakeCartItemKeeper{}, nil},
-		{"CartID not valid", FakeCartItemKeeper{WithError: true}, &service.ErrNotMatchCartID{}},
+		{"CartID not valid", FakeCartItemKeeper{WithError: true}, service.ErrNotMatchCartID},
 		{"With Delete error", FakeCartItemKeeper{WithDeleteError: true}, errCartItemDeleteByID},
 	}
 

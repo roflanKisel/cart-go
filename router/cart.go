@@ -7,6 +7,7 @@ import (
 	"github.com/roflanKisel/cart-go/service"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // NewCartRouter returns router for Cart which uses passed cart service.
@@ -32,7 +33,12 @@ func (cr CartRouter) cart(w http.ResponseWriter, r *http.Request) {
 	if id, ok := vars["id"]; ok {
 		cart, err := cr.cSvc.CartByID(ctx, id)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			if err == mongo.ErrNilDocument {
+				w.WriteHeader(http.StatusNotFound)
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+
 			return
 		}
 

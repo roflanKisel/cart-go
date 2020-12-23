@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/roflanKisel/cart-go/model"
 	"github.com/roflanKisel/cart-go/repository"
@@ -18,12 +19,7 @@ type CartItemService struct {
 }
 
 // ErrNotMatchCartID fires when cart item ID does not match correct CartID.
-type ErrNotMatchCartID struct{}
-
-// Error returns ErrNotMatchCartID error description.
-func (e ErrNotMatchCartID) Error() string {
-	return "Item does not match Cart ID"
-}
+var ErrNotMatchCartID = errors.New("Item does not match Cart ID")
 
 // CreateCartItem creates a CartItem in CartItemKeeper based on passed properties.
 func (cis CartItemService) CreateCartItem(ctx context.Context, cartID string, product string, quantity int) (*model.CartItem, error) {
@@ -51,7 +47,7 @@ func (cis CartItemService) RemoveCartItem(ctx context.Context, cartID string, id
 	}
 
 	if ci.CartID != cartID {
-		return &ErrNotMatchCartID{}
+		return ErrNotMatchCartID
 	}
 
 	err = cis.cik.DeleteByID(ctx, id)
