@@ -7,58 +7,62 @@ import (
 	"github.com/roflanKisel/cart-go/config"
 )
 
-var (
-	ports = []struct {
-		p        string
-		expected string
-	}{
-		{"3000", ":3000"},
-		{"3001", ":3001"},
-		{"3002", ":3002"},
-		{"", ":8080"},
-	}
-
-	dbs = []struct {
-		name     string
-		expected string
-	}{
-		{"test", "test"},
-		{"test2", "test2"},
-		{"", "cart_go"},
-	}
-
-	connectionStrings = []struct {
-		c        string
-		expected string
-	}{
-		{"mongodb://db:27017", "mongodb://db:27017"},
-		{"", "mongodb://localhost:27017"},
-	}
-)
-
 func TestAppPort(t *testing.T) {
+	ports := []struct {
+		name     string
+		port     string
+		expected string
+	}{
+		{"Passed port as ENV variable", "3000", ":3000"},
+		{"Default port", "", ":8080"},
+	}
+
 	for _, p := range ports {
-		os.Setenv("PORT", p.p)
-		if port := config.AppPort(); port != p.expected {
-			t.Errorf("AppPort(): expected: %v actual: %v", p.expected, port)
-		}
+		t.Run(p.name, func(t *testing.T) {
+			os.Setenv("PORT", p.port)
+			if port := config.AppPort(); port != p.expected {
+				t.Fatalf("expected: %v actual: %v", p.expected, port)
+			}
+		})
 	}
 }
 
 func TestDB(t *testing.T) {
+	dbs := []struct {
+		name     string
+		dbName   string
+		expected string
+	}{
+		{"Passed DB name as ENV variable", "test", "test"},
+		{"Default DB name", "", "cart_go"},
+	}
+
 	for _, db := range dbs {
-		os.Setenv("DB", db.name)
-		if name := config.DB(); name != db.expected {
-			t.Errorf("DB(): expected: %v actual: %v", db.expected, name)
-		}
+		t.Run(db.name, func(t *testing.T) {
+			os.Setenv("DB", db.dbName)
+			if dbName := config.DB(); dbName != db.expected {
+				t.Fatalf("expected: %v actual: %v", db.expected, dbName)
+			}
+		})
 	}
 }
 
 func TestConnectionString(t *testing.T) {
+	connectionStrings := []struct {
+		name             string
+		connectionString string
+		expected         string
+	}{
+		{"Passed connection string as ENV variable", "mongodb://db:27017", "mongodb://db:27017"},
+		{"Default connection string", "", "mongodb://localhost:27017"},
+	}
+
 	for _, cs := range connectionStrings {
-		os.Setenv("CONNECTION_STRING", cs.c)
-		if c := config.ConnectionString(); c != cs.expected {
-			t.Errorf("DB(): expected: %v actual: %v", cs.expected, c)
-		}
+		t.Run(cs.name, func(t *testing.T) {
+			os.Setenv("CONNECTION_STRING", cs.connectionString)
+			if c := config.ConnectionString(); c != cs.expected {
+				t.Fatalf("DB(): expected: %v actual: %v", cs.expected, c)
+			}
+		})
 	}
 }

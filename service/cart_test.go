@@ -6,19 +6,27 @@ import (
 	"testing"
 
 	"github.com/roflanKisel/cart-go/model"
+	"github.com/roflanKisel/cart-go/repository"
 	"github.com/roflanKisel/cart-go/service"
+
+	"github.com/stretchr/testify/assert"
+)
+
+var (
+	mockCart = model.Cart{}
 )
 
 type FakeCartKeeper struct {
-	WithError bool
+	WithCreateError bool
+	WithByIDError   bool
 }
 
 func (f FakeCartKeeper) Create(ctx context.Context, c *model.Cart) (*model.Cart, error) {
-	if f.WithError {
-		return nil, fmt.Errorf("Fake Cart Create Error")
+	if f.WithCreateError {
+		return nil, fmt.Errorf("Mock Create error")
 	}
 
-	return &model.Cart{}, nil
+	return &mockCart, nil
 }
 
 func (f FakeCartKeeper) All(ctx context.Context) ([]*model.Cart, error) {
@@ -26,11 +34,11 @@ func (f FakeCartKeeper) All(ctx context.Context) ([]*model.Cart, error) {
 }
 
 func (f FakeCartKeeper) ByID(ctx context.Context, id string) (*model.Cart, error) {
-	if f.WithError {
-		return nil, fmt.Errorf("Fake Cart ByID Error")
+	if f.WithByIDError {
+		return nil, fmt.Errorf("Mock ByID error")
 	}
 
-	return &model.Cart{}, nil
+	return &mockCart, nil
 }
 
 func (f FakeCartKeeper) UpdateByID(ctx context.Context, id string, c *model.Cart) error {
@@ -44,21 +52,28 @@ func (f FakeCartKeeper) DeleteByID(ctx context.Context, id string) error {
 func TestCreateEmptyCart(t *testing.T) {
 	ctx := context.TODO()
 
-	ck := &FakeCartKeeper{WithError: false}
-	cik := &FakeCartItemKeeper{WithError: false}
-
-	svc := service.NewCartService(ck, cik)
-
-	_, err := svc.CreateEmpty(ctx)
-	if err != nil {
-		t.Errorf("CreateEmpty(): %v", err)
-		return
+	services := []struct {
+		name     string
+		ck       repository.CartKeeper
+		cik      repository.CartItemKeeper
+		expected *model.Cart
+	}{
+		{"Without errors", FakeCartKeeper{}, FakeCartItemKeeper{}, &mockCart},
+		{"With Create error", FakeCartKeeper{WithCreateError: true}, FakeCartItemKeeper{}, nil},
 	}
 
-	ck.WithError = true
-	_, err = svc.CreateEmpty(ctx)
-	if err == nil {
-		t.Error("CreateEmpty(): Should return an error")
+	for _, svc := range services {
+		t.Run(svc.name, func(t *testing.T) {
+			s := service.NewCartService(svc.ck, svc.cik)
+
+			c, err := s.CreateEmpty(ctx)
+			if err != nil {
+				assert.Nil(t, svc.expected)
+				return
+			}
+
+			assert.Equal(t, *svc.expected, *c, "should be equal")
+		})
 	}
 }
 
@@ -66,30 +81,28 @@ func TestCartByID(t *testing.T) {
 	id := "**MockObjectID**"
 	ctx := context.TODO()
 
-	ck := &FakeCartKeeper{WithError: false}
-	cik := &FakeCartItemKeeper{WithError: false}
-
-	svc := service.NewCartService(ck, cik)
-
-	_, err := svc.CartByID(ctx, id)
-	if err != nil {
-		t.Errorf("CartByID(): %v", err)
-		return
+	services := []struct {
+		name     string
+		ck       repository.CartKeeper
+		cik      repository.CartItemKeeper
+		expected *model.Cart
+	}{
+		{"Without errors", FakeCartKeeper{}, FakeCartItemKeeper{}, &mockCart},
+		{"With ByID error", FakeCartKeeper{WithByIDError: true}, FakeCartItemKeeper{}, nil},
+		{"With CartItem error", FakeCartKeeper{}, FakeCartItemKeeper{WithError: true}, nil},
 	}
 
-	ck.WithError = true
+	for _, svc := range services {
+		t.Run(svc.name, func(t *testing.T) {
+			s := service.NewCartService(svc.ck, svc.cik)
 
-	_, err = svc.CartByID(ctx, id)
-	if err == nil {
-		t.Error("CartByID(): Should return an error")
-		return
-	}
+			c, err := s.CartByID(ctx, id)
+			if err != nil {
+				assert.Nil(t, svc.expected, "should return an error")
+				return
+			}
 
-	ck.WithError = false
-	cik.WithError = true
-
-	_, err = svc.CartByID(ctx, id)
-	if err == nil {
-		t.Error("CartByID(): Should return an error")
+			assert.Equal(t, *svc.expected, *c, "should be equal")
+		})
 	}
 }

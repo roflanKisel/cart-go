@@ -3,48 +3,72 @@ package model_test
 import (
 	"testing"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
-
 	"github.com/roflanKisel/cart-go/model"
+
+	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestCartMongoObject(t *testing.T) {
-	c := model.Cart{
-		ID:    id,
-		Items: []model.CartItem{},
-	}
-
-	mc, err := c.MongoObject()
+	mID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatalf("Cannot convert id to ObjectID")
 	}
 
-	if mc.ID.Hex() != id || len(mc.Items) != len(c.Items) {
-		t.Errorf("MongoObject(): expected %v, actual %v", c, mc)
+	carts := []struct {
+		name     string
+		c        model.Cart
+		expected model.MongoCart
+	}{
+		{"With correct ID", model.Cart{
+			ID: id,
+		}, model.MongoCart{
+			ID: mID,
+		}},
+		{"Without ID", model.Cart{}, model.MongoCart{}},
+	}
+
+	for _, cart := range carts {
+		t.Run(cart.name, func(t *testing.T) {
+			mc, err := cart.c.MongoObject()
+			if err != nil {
+				if cart.c.ID == "" {
+					return
+				}
+
+				t.Fatalf("Error during convertion: %s", err)
+			}
+
+			assert.Equal(t, cart.expected, *mc, "should be equal")
+		})
 	}
 }
 
 func TestCartDefaultObject(t *testing.T) {
-	objID, err := primitive.ObjectIDFromHex(id)
+	mID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		t.Fatal("DefaultObject(): Cannot convert ID to ObjectID")
-		return
+		t.Fatalf("Cannot convert id to ObjectID")
 	}
 
-	mc := model.MongoCart{
-		ID:    objID,
-		Items: []model.CartItem{},
+	mCarts := []struct {
+		name     string
+		mc       model.MongoCart
+		expected model.Cart
+	}{
+		{"With correct ID", model.MongoCart{
+			ID: mID,
+		}, model.Cart{
+			ID: id,
+		}},
+		{"Without ID", model.MongoCart{}, model.Cart{
+			ID: "000000000000000000000000",
+		}},
 	}
 
-	c := mc.DefaultObject(nil)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if c.ID != id || len(c.Items) != len(mc.Items) {
-		t.Errorf("MongoObject(): expected %v, actual %v", c, mc)
-		return
+	for _, mCart := range mCarts {
+		t.Run(mCart.name, func(t *testing.T) {
+			c := mCart.mc.DefaultObject(nil)
+			assert.Equal(t, mCart.expected, *c, "should be equal")
+		})
 	}
 }

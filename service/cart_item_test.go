@@ -6,7 +6,21 @@ import (
 	"testing"
 
 	"github.com/roflanKisel/cart-go/model"
+	"github.com/roflanKisel/cart-go/repository"
 	"github.com/roflanKisel/cart-go/service"
+
+	"github.com/stretchr/testify/assert"
+)
+
+var (
+	mockCartItem = model.CartItem{
+		ID:       "**mongoID**",
+		CartID:   "**mongoCartID**",
+		Product:  "Product",
+		Quantity: 1,
+	}
+	errCartItemCreate     = fmt.Errorf("Fake CartItem Create Error")
+	errCartItemDeleteByID = fmt.Errorf("Fake CartItem DeleteByID Error")
 )
 
 type FakeCartItemKeeper struct {
@@ -16,10 +30,10 @@ type FakeCartItemKeeper struct {
 
 func (f FakeCartItemKeeper) Create(ctx context.Context, c *model.CartItem) (*model.CartItem, error) {
 	if f.WithError {
-		return nil, fmt.Errorf("Fake CartItem Create Error")
+		return nil, errCartItemCreate
 	}
 
-	return c, nil
+	return &mockCartItem, nil
 }
 
 func (f FakeCartItemKeeper) All(ctx context.Context) ([]*model.CartItem, error) {
@@ -28,7 +42,7 @@ func (f FakeCartItemKeeper) All(ctx context.Context) ([]*model.CartItem, error) 
 
 func (f FakeCartItemKeeper) ByID(ctx context.Context, id string) (*model.CartItem, error) {
 	if f.WithError {
-		return nil, fmt.Errorf("Fake CartItem ByID Error")
+		return nil, &service.ErrNotMatchCartID{}
 	}
 
 	return &model.CartItem{ID: "**mongoID**", CartID: "**mongoCartID**"}, nil
@@ -40,7 +54,7 @@ func (f FakeCartItemKeeper) UpdateByID(ctx context.Context, id string, c *model.
 
 func (f FakeCartItemKeeper) DeleteByID(ctx context.Context, id string) error {
 	if f.WithDeleteError {
-		return fmt.Errorf("Fake CartItem DeleteByID Error")
+		return errCartItemDeleteByID
 	}
 
 	return nil
@@ -55,63 +69,57 @@ func (f FakeCartItemKeeper) ByCartID(ctx context.Context, id string) ([]model.Ca
 }
 
 func TestCreateCartItem(t *testing.T) {
-	c := model.CartItem{
-		CartID:   "**mongoID**",
-		Product:  "Product",
-		Quantity: 1,
-	}
-
 	ctx := context.TODO()
-	cik := &FakeCartItemKeeper{WithError: false}
 
-	svc := service.NewCartItemService(cik)
-
-	_, err := svc.CreateCartItem(ctx, c.CartID, c.Product, c.Quantity)
-	if err != nil {
-		t.Errorf("CreateCartItem(): %v", err)
-		return
+	services := []struct {
+		name     string
+		cik      repository.CartItemKeeper
+		ci       model.CartItem
+		expected *model.CartItem
+	}{
+		{"Without errors", FakeCartItemKeeper{}, mockCartItem, &mockCartItem},
+		{"With error", FakeCartItemKeeper{WithError: true}, mockCartItem, nil},
 	}
 
-	cik.WithError = true
+	for _, svc := range services {
+		t.Run(svc.name, func(t *testing.T) {
+			s := service.NewCartItemService(svc.cik)
 
-	_, err = svc.CreateCartItem(ctx, c.CartID, c.Product, c.Quantity)
-	if err == nil {
-		t.Error("CreateCartItem(): Should return an error")
+			ci, err := s.CreateCartItem(ctx, svc.ci.CartID, svc.ci.Product, svc.ci.Quantity)
+			if err != nil {
+				assert.Nil(t, svc.expected)
+				return
+			}
+
+			assert.Equal(t, *svc.expected, *ci, "should be equal")
+		})
 	}
 }
 
 func TestRemoveCartItem(t *testing.T) {
-	c := model.CartItem{
-		ID:       "**mongoID**",
-		CartID:   "**mongoCartID**",
-		Product:  "Product",
-		Quantity: 1,
-	}
-
 	ctx := context.TODO()
-	cik := &FakeCartItemKeeper{WithError: false, WithDeleteError: false}
 
-	svc := service.NewCartItemService(cik)
-
-	err := svc.RemoveCartItem(ctx, c.CartID, c.ID)
-	if err != nil {
-		t.Errorf("RemoveCartItem(): %v", err)
-		return
+	services := []struct {
+		name     string
+		cik      repository.CartItemKeeper
+		expected error
+	}{
+		{"Without errors", FakeCartItemKeeper{}, nil},
+		{"CartID not valid", FakeCartItemKeeper{WithError: true}, &service.ErrNotMatchCartID{}},
+		{"With Delete error", FakeCartItemKeeper{WithDeleteError: true}, errCartItemDeleteByID},
 	}
 
-	cik.WithError = true
+	for _, svc := range services {
+		t.Run(svc.name, func(t *testing.T) {
+			s := service.NewCartItemService(svc.cik)
 
-	err = svc.RemoveCartItem(ctx, c.CartID, c.ID)
-	if err == nil {
-		t.Error("CreateCartItem(): Should return an error")
-		return
-	}
+			err := s.RemoveCartItem(ctx, mockCartItem.CartID, mockCartItem.ID)
+			if svc.expected != nil {
+				assert.EqualError(t, err, svc.expected.Error())
+				return
+			}
 
-	cik.WithError = false
-	cik.WithDeleteError = true
-
-	err = svc.RemoveCartItem(ctx, c.CartID, c.ID)
-	if err == nil {
-		t.Error("CreateCartItem(): Should return an error")
+			assert.Nil(t, err)
+		})
 	}
 }

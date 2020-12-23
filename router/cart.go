@@ -21,11 +21,11 @@ type CartRouter struct {
 
 // RegisterCartHandlers registers HTTP handlers for Cart model.
 func (cr CartRouter) RegisterCartHandlers(r *mux.Router) {
-	r.HandleFunc("/carts/{id}", cr.getCart).Methods("GET")
+	r.HandleFunc("/carts/{id}", cr.cart).Methods("GET")
 	r.HandleFunc("/carts", cr.createCart).Methods("POST")
 }
 
-func (cr CartRouter) getCart(w http.ResponseWriter, r *http.Request) {
+func (cr CartRouter) cart(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
 

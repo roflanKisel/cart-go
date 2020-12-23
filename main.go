@@ -2,44 +2,37 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/roflanKisel/cart-go/config"
+	"github.com/roflanKisel/cart-go/db"
 	"github.com/roflanKisel/cart-go/repository"
 	"github.com/roflanKisel/cart-go/router"
 	"github.com/roflanKisel/cart-go/service"
-
-	"github.com/gorilla/mux"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.ConnectionString()))
+	client, err := db.NewClient(ctx, config.ConnectionString())
 	if err != nil {
-		log.Fatal("Error connecting database", err)
+		log.Fatal(err)
 	}
 
 	defer func() {
 		err := client.Disconnect(ctx)
 		if err != nil {
-			log.Fatal("Error disconnecting database client")
+			log.Fatalf("Error disconnecting database client: %s", err)
 		}
 	}()
 
-	database := client.Database(config.DB())
-	err = client.Ping(ctx, nil)
+	database, err := db.NewDB(ctx, client, config.DB())
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Connection to database failed: %s", err.Error()))
+		log.Fatal(err)
 	}
-
-	r := mux.NewRouter()
 
 	cartRepository := repository.NewMongoCartRepository(database)
 	cartItemRepository := repository.NewMongoCartItemRepository(database)
@@ -47,11 +40,6 @@ func main() {
 	cartService := service.NewCartService(cartRepository, cartItemRepository)
 	cartItemService := service.NewCartItemService(cartItemRepository)
 
-	cartRouter := router.NewCartRouter(cartService)
-	cartItemRouter := router.NewCartItemRouter(cartService, cartItemService)
-
-	cartRouter.RegisterCartHandlers(r)
-	cartItemRouter.RegisterCartItemHandlers(r)
-
+	r := router.NewRouter(cartService, cartItemService)
 	log.Fatal(http.ListenAndServe(config.AppPort(), r))
 }
