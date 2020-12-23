@@ -31,7 +31,7 @@ func (f FakeCartItemKeeper) All(ctx context.Context) ([]*model.CartItem, error) 
 
 func (f FakeCartItemKeeper) ByID(ctx context.Context, id string) (*model.CartItem, error) {
 	if f.ByIDNotFoundError {
-		return nil, mongo.ErrNilDocument
+		return nil, mongo.ErrNoDocuments
 	}
 
 	return &model.CartItem{ID: f.DocID, CartID: f.CartDocID}, nil

@@ -58,7 +58,7 @@ func (cir CartItemRouter) createCartItem(w http.ResponseWriter, r *http.Request)
 
 	_, err := cir.cSvc.CartByID(ctx, cartID)
 	if err != nil {
-		if err == mongo.ErrNilDocument {
+		if err == mongo.ErrNoDocuments {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -85,6 +85,7 @@ func (cir CartItemRouter) createCartItem(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(ci)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -114,7 +115,7 @@ func (cir CartItemRouter) deleteCartItem(w http.ResponseWriter, r *http.Request)
 
 	err := cir.ciSvc.RemoveCartItem(ctx, cartID, id)
 	if err != nil {
-		if err == mongo.ErrNilDocument || err == service.ErrNotMatchCartID {
+		if err == mongo.ErrNoDocuments || err == service.ErrNotMatchCartID {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -129,6 +130,7 @@ func (cir CartItemRouter) deleteCartItem(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(struct{}{})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

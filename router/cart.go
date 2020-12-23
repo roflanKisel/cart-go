@@ -33,7 +33,7 @@ func (cr CartRouter) cart(w http.ResponseWriter, r *http.Request) {
 	if id, ok := vars["id"]; ok {
 		cart, err := cr.cSvc.CartByID(ctx, id)
 		if err != nil {
-			if err == mongo.ErrNilDocument {
+			if err == mongo.ErrNoDocuments {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -42,6 +42,7 @@ func (cr CartRouter) cart(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(cart)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -64,6 +65,7 @@ func (cr CartRouter) createCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(cart)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

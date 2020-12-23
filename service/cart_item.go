@@ -4,26 +4,41 @@ import (
 	"context"
 	"errors"
 
+	"github.com/roflanKisel/cart-go/validator"
+
 	"github.com/roflanKisel/cart-go/model"
 	"github.com/roflanKisel/cart-go/repository"
 )
 
 // NewCartItemService returns a service for CartItem manipulations over the passed CartItemKeeper.
 func NewCartItemService(cik repository.CartItemKeeper) *CartItemService {
-	return &CartItemService{cik: cik}
+	return &CartItemService{cik: cik, v: *validator.NewCartItemValidator()}
 }
 
 // CartItemService handles CartItem operations over the CartItemKeeper.
 type CartItemService struct {
 	cik repository.CartItemKeeper
+	v   validator.CartItemValidator
 }
 
-// ErrNotMatchCartID fires when cart item ID does not match correct CartID.
-var ErrNotMatchCartID = errors.New("Item does not match Cart ID")
+var (
+	// ErrNotMatchCartID fires when cart item ID does not match correct CartID.
+	ErrNotMatchCartID = errors.New("Item does not match Cart ID")
+	// ErrInvalidQuantity fires when cart item quantity is invalid.
+	ErrInvalidQuantity = errors.New("Quantity must be positive")
+	// ErrInvalidProduct fires when cart item product name is invalid.
+	ErrInvalidProduct = errors.New("Product should not be an empty string")
+)
 
 // CreateCartItem creates a CartItem in CartItemKeeper based on passed properties.
 func (cis CartItemService) CreateCartItem(ctx context.Context, cartID string, product string, quantity int) (*model.CartItem, error) {
-	// TODO: Put validator here
+	if !cis.v.ValidateQuantity(quantity) {
+		return nil, ErrInvalidQuantity
+	}
+
+	if !cis.v.ValidateProduct(product) {
+		return nil, ErrInvalidProduct
+	}
 
 	cartItem := &model.CartItem{
 		CartID:   cartID,

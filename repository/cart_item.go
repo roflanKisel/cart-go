@@ -157,5 +157,9 @@ func (m *MongoCartItemRepository) ByCartID(ctx context.Context, id string) ([]mo
 		return nil, err
 	}
 
+	if cartItems == nil {
+		cartItems = []model.CartItem{}
+	}
+
 	return cartItems, nil
 }
