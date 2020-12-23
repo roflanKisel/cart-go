@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/roflanKisel/cart-go/validator"
-
 	"github.com/roflanKisel/cart-go/model"
 	"github.com/roflanKisel/cart-go/repository"
+	"github.com/roflanKisel/cart-go/validator"
 )
 
 // NewCartItemService returns a service for CartItem manipulations over the passed CartItemKeeper.
